@@ -1,0 +1,11 @@
+13c13,20
+< 
+---
+> t=1
+> mul=1
+> while [ $t -le $n ]
+> do
+>         mul=$((mul*t))
+>         t=$((t+1))
+> done
+> echo "Factorial is $mul"
