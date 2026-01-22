@@ -1,0 +1,99 @@
+def train(model, optimizer, criterion, X, y):
+    model.train()
+    optimizer.zero_grad()
+    outputs = model(X)
+    loss = criterion(outputs, y)
+    loss.backward()
+    optimizer.step()
+    return loss.item()
+
+
+def evaluate(model, X, y):
+    model.eval()
+    with torch.no_grad():
+        outputs = model(X)
+        preds = torch.argmax(outputs, dim=1)
+        accuracy = (preds == y).float().mean().item()
+    return accuracy
+
+-------------------------------------------------------------------------------
+
+model_l2 = MLP(dropout=0.0)
+
+optimizer_l2 = optim.Adam(
+    model_l2.parameters(),
+    lr=0.001,
+    weight_decay=1e-4   # L2 regularization
+)
+
+criterion = nn.CrossEntropyLoss()
+
+for epoch in range(100):
+    loss = train(model_l2, optimizer_l2, criterion, X_train, y_train)
+
+acc = evaluate(model_l2, X_test, y_test)
+print("L2 Test Accuracy:", acc)
+
+----------------------------------------------------------------------------
+
+def l1_penalty(model, lambda_l1):
+    l1 = 0.0
+    for p in model.parameters():
+        l1 += torch.sum(torch.abs(p))
+    return lambda_l1 * l1
+
+model_l1 = MLP()
+optimizer_l1 = optim.Adam(model_l1.parameters(), lr=0.001)
+
+for epoch in range(100):
+    model_l1.train()
+    optimizer_l1.zero_grad()
+
+    outputs = model_l1(X_train)
+    loss = criterion(outputs, y_train)
+    loss += l1_penalty(model_l1, lambda_l1=1e-5)
+
+    loss.backward()
+    optimizer_l1.step()
+
+acc = evaluate(model_l1, X_test, y_test)
+print("L1 Test Accuracy:", acc)
+
+------------------------------dropout-----------------------------------------------
+model_dropout = MLP(dropout=0.5)
+
+optimizer_dropout = optim.Adam(
+    model_dropout.parameters(),
+    lr=0.001
+)
+
+for epoch in range(100):
+    loss = train(model_dropout, optimizer_dropout, criterion, X_train, y_train)
+
+acc = evaluate(model_dropout, X_test, y_test)
+print("Dropout Test Accuracy:", acc)
+
+-------------------------------early stop ----------------------------------------------
+best_acc = 0.0
+patience = 10
+counter = 0
+
+model_es = MLP(dropout=0.3)
+optimizer_es = optim.Adam(model_es.parameters(), lr=0.001)
+
+for epoch in range(200):
+    train(model_es, optimizer_es, criterion, X_train, y_train)
+    acc = evaluate(model_es, X_test, y_test)
+
+    if acc > best_acc:
+        best_acc = acc
+        counter = 0
+    else:
+        counter += 1
+
+    if counter >= patience:
+        print(f"Early stopping at epoch {epoch}")
+        break
+
+print("Early Stopping Test Accuracy:", best_acc)
+
