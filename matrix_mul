@@ -1,0 +1,44 @@
+from mrjob.job import MRJob
+
+# ---- CONFIG ----
+ROWS_A = 5  # number of rows in A
+COLS_B = 5   # number of columns in B
+# ----------------
+
+class MatrixMultiplication(MRJob):
+
+    def mapper(self, _, line):
+        matrix , i, j, value = line.strip().split()
+        i, j, value = int(i), int(j), float(value)
+
+        if matrix == 'a':
+            # A[i][k] contributes to C[i][j] for all j
+            for col in range(COLS_B):
+                yield (i, col), ('a', j, value)
+
+        elif matrix == 'b':
+            # B[k][j] contributes to C[i][j] for all i
+            for row in range(ROWS_A):
+                yield (row, j), ('b', i, value)
+
+    def reducer(self, key, values):
+        A_vals = {}
+        B_vals = {}
+
+        for tag, index, value in values:
+            if tag == 'a':
+                A_vals[index] = value
+            else:
+                B_vals[index] = value
+
+        # Multiply matching k values
+        result = 0
+        for k in A_vals:
+            if k in B_vals:
+                result += A_vals[k] * B_vals[k]
+
+        yield key, result
+
+
+if __name__ == '__main__':
+    MatrixMultiplication.run()
